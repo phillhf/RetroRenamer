@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+
+# Local settings and cache
+retrorenamer_settings.json
+romnamer_settings.json
+*.pkl
+
+# DAT files are downloaded by each user (see README) - never commit them
+dats/*
+!dats/README.md
+
+# Never commit ROMs, undo logs or reports
+Rom/
+ROMs/
+roms/
+*.zip
+*.7z
+*.nes
+*.sfc
+*.smc
+*.gb
+*.gbc
+*.gba
+*.nds
+*.n64
+*.z64
+*.v64
+*.smd
+*.gen
+*.bin
+*.iso
+retrorenamer_undo_*.csv
+romnamer_undo_*.csv
+retrorenamer_bericht*.csv
