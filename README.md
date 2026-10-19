@@ -92,7 +92,8 @@ On Linux, install the `p7zip-full` or `7zip` package. On macOS, run `brew instal
 This is the most important step. **Without DAT files, RetroRenamer cannot recognize anything.**
 You only need to do it once. Repeat it from time to time to get newly added games.
 
-> 💡 The **Download DATs** button in RetroRenamer opens the download page and your DAT folder.
+> 💡 In RetroRenamer, the **No-Intro DATs (website)** button opens the No-Intro download page and your DAT folder.
+> Redump DATs can be downloaded directly with **Get Redump DATs...** (see below).
 
 ### Cartridge and handheld systems: No-Intro (recommended)
 
@@ -135,8 +136,20 @@ If you use the complete daily pack, you already have all of them. The names belo
 
 ### Disc-based systems: Redump
 
-For CD/DVD systems (PlayStation, PS2, PSP, Saturn, Dreamcast, Mega-CD, GameCube, ...) download the DAT from
-**http://redump.org/downloads/**. Click **Datfile** next to the system and put the file into the `dats` folder.
+For CD/DVD systems (PlayStation, PS2, PSP, Saturn, Dreamcast, Mega-CD, GameCube, ...) RetroRenamer can download the
+DATs for you:
+
+1. Click **Get Redump DATs...**
+2. Select your systems (click to select several) and click **Download**.
+
+The files are downloaded from redump.org into your `dats` folder, and older versions are replaced. To go easy on
+Redump's servers, RetroRenamer waits 5 seconds between two downloads and only downloads when you ask it to.
+Your selection is remembered, so updating later is just two clicks.
+
+On the command line: `python retrorenamer.py --redump psx,ps2`. Run `--redump list` to see all system codes.
+
+You can also download them manually from **http://redump.org/downloads/**: click **Datfile** next to the system and
+put the file into the `dats` folder.
 
 Supported disc formats:
 - `.cue` + one or more `.bin` tracks (e.g. PlayStation, Saturn, Mega-CD)
@@ -192,6 +205,7 @@ python retrorenamer.py --undo "D:\ROMs\retrorenamer_undo_20261019_120000.csv"
 | `--workers N` | Number of files checked in parallel (default: automatic) |
 | `--lang de\|en` | Output language (default: system language) |
 | `--undo UNDO.csv` | Undo a previous run |
+| `--redump psx,ps2` | Download Redump DATs into the DAT folder (`--redump list` shows all codes) |
 | `--update` | Install the latest version from GitHub |
 
 ---
@@ -253,6 +267,13 @@ Directly from the DAT files. RetroRenamer uses exactly the names published by No
 
 - Compressed disc formats (`.chd`, `.rvz`, `.cso`, `.pbp`) and `.gdi` are not supported.
 - `.7z` and `.rar` archives: only the archive itself is renamed, not the files inside.
+
+## Why are No-Intro DATs not downloaded automatically?
+
+No-Intro's data license allows free use of the DATs. However, their download page is designed as a manual process
+(a request form), and their `robots.txt` asks for at most one request every 5 seconds. To respect the volunteer-run
+project, RetroRenamer only opens their download page. Redump offers a direct download link for every system, so
+RetroRenamer can download those for you.
 
 ## Development
 

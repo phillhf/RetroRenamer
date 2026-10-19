@@ -14,6 +14,7 @@ from tkinter import filedialog, messagebox, ttk
 
 import i18n
 from i18n import tr
+import datfetch
 import retrorenamer as rn
 import updater
 
@@ -50,6 +51,7 @@ class App(tk.Tk):
         self.move_unknown = tk.BooleanVar(value=s.get("move_unknown", False))
         self.move_dups = tk.BooleanVar(value=s.get("move_dups", False))
         self.zip_inner = tk.BooleanVar(value=s.get("zip_inner", True))
+        self.redump_systems = list(s.get("redump_systems", []))
         self.filter = tk.StringVar()
         self.lang = tk.StringVar(value=i18n.LANGUAGES[i18n.get_language()])
         if not os.path.isdir(rn.DEFAULT_DAT_DIR):
@@ -84,6 +86,8 @@ class App(tk.Tk):
             ttk.Entry(top, textvariable=var).grid(row=row, column=1, sticky="ew", **pad)
             ttk.Button(top, text=tr("gui.browse"), command=lambda v=var: self._pick(v)).grid(row=row, column=2, **pad)
         ttk.Button(top, text=tr("gui.get_dats"), command=self._open_dat_page).grid(row=1, column=3, **pad)
+        self.btn_redump = ttk.Button(top, text=tr("gui.redump_dats"), command=self.do_redump)
+        self.btn_redump.grid(row=1, column=4, **pad)
         top.columnconfigure(1, weight=1)
 
         opts = ttk.Frame(self.frame)
@@ -188,7 +192,8 @@ class App(tk.Tk):
                 json.dump({"rom_dir": self.rom_dir.get(), "dat_dir": self.dat_dir.get(),
                            "recursive": self.recursive.get(), "sort": self.sort.get(),
                            "move_unknown": self.move_unknown.get(), "move_dups": self.move_dups.get(),
-                           "zip_inner": self.zip_inner.get(), "lang": i18n.get_language()}, f, indent=2)
+                           "zip_inner": self.zip_inner.get(), "lang": i18n.get_language(),
+                           "redump_systems": self.redump_systems}, f, indent=2)
         except OSError:
             pass
         self.destroy()
@@ -196,7 +201,7 @@ class App(tk.Tk):
     # ---------------- Hintergrund-Aufgaben ----------------
     def _update_buttons(self):
         idle = "disabled" if self.busy else "normal"
-        for b in (self.btn_scan, self.btn_undo, self.btn_update):
+        for b in (self.btn_scan, self.btn_undo, self.btn_update, self.btn_redump):
             b.configure(state=idle)
         self.btn_report.configure(state="normal" if self.items and not self.busy else "disabled")
         todo = any(it.has_changes for it in self.items)
@@ -238,6 +243,8 @@ class App(tk.Tk):
                     self._fill()
                 elif kind == "update":
                     self._offer_update(val)
+                elif kind == "call":
+                    val()
                 elif kind == "restart":
                     self._restart()
                 elif kind == "info":
@@ -313,6 +320,73 @@ class App(tk.Tk):
         if path:
             rn.write_report(self.items, path, self.rom_dir.get().strip())
             self.status.set(tr("gui.report_saved", path=path))
+
+    # ---------------- Redump-DATs ----------------
+    def do_redump(self):
+        """Dialog: Systeme auswaehlen und deren Redump-DATs in den DAT-Ordner laden."""
+        dat = self.dat_dir.get().strip() or rn.DEFAULT_DAT_DIR
+        win = tk.Toplevel(self)
+        win.title(tr("redump.title"))
+        win.geometry("620x520")
+        win.transient(self)
+        ttk.Label(win, text=tr("redump.intro", s=datfetch.PAUSE_SECONDS), wraplength=590, justify="left") \
+            .pack(fill="x", padx=10, pady=(10, 6))
+        info = tk.StringVar(value=tr("redump.loading_list"))
+        ttk.Label(win, textvariable=info, foreground="#666").pack(fill="x", padx=10)
+        frame = ttk.Frame(win)
+        frame.pack(fill="both", expand=True, padx=10, pady=6)
+        lb = tk.Listbox(frame, selectmode="multiple", activestyle="none", exportselection=False)
+        sb = ttk.Scrollbar(frame, orient="vertical", command=lb.yview)
+        lb.configure(yscrollcommand=sb.set)
+        lb.pack(side="left", fill="both", expand=True)
+        sb.pack(side="right", fill="y")
+        btns = ttk.Frame(win)
+        btns.pack(fill="x", padx=10, pady=(0, 10))
+        ok = ttk.Button(btns, text=tr("redump.download"), state="disabled")
+        ok.pack(side="right", padx=4)
+        ttk.Button(btns, text=tr("redump.cancel"), command=win.destroy).pack(side="right")
+        systems = []
+
+        def fill(result):
+            if not win.winfo_exists():
+                return
+            found, live = result
+            systems[:] = found
+            for i, (code, name) in enumerate(found):
+                lb.insert("end", f"{name}  ({code})")
+                if code in self.redump_systems:
+                    lb.selection_set(i)
+            info.set("" if live else tr("redump.fallback"))
+            ok.configure(state="normal")
+
+        def load_list():
+            result = datfetch.list_systems()
+            self.q.put(("call", lambda: fill(result)))  # Tk nur aus dem Haupt-Thread ansprechen
+        threading.Thread(target=load_list, daemon=True).start()
+
+        def start():
+            codes = [systems[i][0] for i in lb.curselection()]
+            if not codes:
+                messagebox.showwarning(tr("redump.title"), tr("redump.none_selected"), parent=win)
+                return
+            self.redump_systems = codes
+            names = dict(systems)
+            win.destroy()
+
+            def job():
+                def progress(i, n, code):
+                    self._progress(i, n, tr("redump.progress", name=names.get(code, code)) if code else "")
+                results = datfetch.download_systems(codes, dat, progress)
+                failed = [f"{names.get(c, c)}: {err}" for c, _, err, _ in results if err]
+                ok_count = sum(1 for _, name, _, _ in results if name)
+                current = sum(1 for *_, cur in results if cur)
+                msg = tr("redump.done", ok=ok_count, current=current, failed=len(failed))
+                if failed:
+                    msg += "\n\n" + "\n".join(failed)
+                self._log(msg.split("\n")[0])
+                self.q.put(("info", msg))
+            self._run(job)
+        ok.configure(command=start)
 
     # ---------------- Updates ----------------
     def check_update(self, silent):

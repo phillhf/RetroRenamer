@@ -270,6 +270,49 @@ except RuntimeError:
     pass
 assert open(exe, "rb").read()[:5] == b"MZneu"
 
+# ---------------------------------------------------------------- Redump-Download (ohne Internet, simuliert)
+import datfetch
+sample = ('<table><tr><td>Konami Twinkle</td><td></td><td></td></tr>'
+          '<tr><td>Namco &middot; Sega &middot; Nintendo Triforce</td><td><a href="/cues/trf/">Cuesheets</a></td>'
+          '<td><a href="/datfile/trf/">Datfile</a></td></tr>'
+          '<tr><td>Sony PlayStation</td><td><a href="/cues/psx/">Cuesheets</a></td><td><a href="/datfile/psx/">Datfile</a>'
+          '</td><td></td><td><a href="/datfile/psx-bios/">BIOS Datfile</a></td></tr></table>')
+assert datfetch.parse_systems(sample) == [("trf", "Namco · Sega · Nintendo Triforce"), ("psx", "Sony PlayStation")]
+rd = os.path.join(base, "redump_dats")
+os.makedirs(rd)
+open(os.path.join(rd, "Sony - PlayStation - Datfile (10900) (2026-01-01 00-00-00).zip"), "wb").write(b"alt")
+open(os.path.join(rd, "eigene.dat"), "wb").write(b"bleibt")
+zbuf = io.BytesIO()
+with zipfile.ZipFile(zbuf, "w") as z:
+    z.writestr("Sony - PlayStation.dat", cd_dat + "</datafile>")
+calls = []
+
+
+def fake_get(url, timeout=60):
+    calls.append(url)
+    if url.endswith("/datfile/psx/"):
+        return zbuf.getvalue(), {"Content-Disposition":
+                                 'attachment; filename="Sony - PlayStation - Datfile (10914) (2026-06-15 11-55-46).zip"'}
+    if url.endswith("/datfile/kaputt/"):
+        return b"<html>Fehler</html>", {}
+    raise OSError("offline")
+
+
+real_get = datfetch._get
+datfetch._get = fake_get
+try:
+    res = datfetch.download_systems(["psx", "kaputt"], rd, pause=0)
+    assert res[0][1] == "Sony - PlayStation - Datfile (10914) (2026-06-15 11-55-46).zip" and not res[0][2], res
+    assert res[1][1] is None and res[1][2], res
+    assert sorted(os.listdir(rd)) == ["Sony - PlayStation - Datfile (10914) (2026-06-15 11-55-46).zip", "eigene.dat"]
+    assert datfetch.download_system("psx", rd)[1] is True  # unveraendert -> "schon aktuell"
+    systems, live = datfetch.list_systems()                 # offline -> eingebaute Liste
+    assert not live and ("psx", "Sony PlayStation") in systems
+    assert len(rn.load_dats(rd, log=lambda m: None)) == 6   # geladene ZIP ist als DAT nutzbar
+finally:
+    datfetch._get = real_get
+assert all(c.startswith("http://redump.org/") for c in calls), calls
+
 # ---------------------------------------------------------------- GUI darf keine Tk-Interna ueberschreiben
 try:
     import tkinter

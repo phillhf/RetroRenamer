@@ -34,7 +34,7 @@ from dataclasses import dataclass, field
 
 from i18n import tr, all_translations, set_language
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 
 def _app_dir():
@@ -1036,6 +1036,7 @@ def main(argv=None):
     p.add_argument("--workers", type=int, default=0, help=tr("cli.workers"))
     p.add_argument("--undo", metavar="UNDO_CSV", help=tr("cli.undo"))
     p.add_argument("--update", action="store_true", help=tr("cli.update"))
+    p.add_argument("--redump", metavar="CODES", help=tr("cli.redump"))
     p.add_argument("--lang", choices=["de", "en"], help=tr("cli.lang"))
     p.add_argument("--version", action="version", version=f"RetroRenamer {VERSION}")
     a = p.parse_args(argv)
@@ -1048,6 +1049,24 @@ def main(argv=None):
             print(tr("cli.update_failed", error=ex))
             return 1
         return 0
+    if a.redump:
+        import datfetch
+        systems, _ = datfetch.list_systems()
+        if a.redump.strip().lower() == "list":
+            print(tr("redump.list_header"))
+            for code, name in systems:
+                print(f"  {code:<12} {name}")
+            return 0
+        names = dict(systems)
+        codes = [c.strip() for c in a.redump.split(",") if c.strip()]
+        results = datfetch.download_systems(
+            codes, a.dats, lambda i, n, c: c and print(tr("redump.progress", name=names.get(c, c)), flush=True))
+        for code, _, err, _ in results:
+            if err:
+                print(f"  {names.get(code, code)}: {err}")
+        print(tr("redump.done", ok=sum(1 for r in results if r[1]), current=sum(1 for r in results if r[3]),
+                 failed=sum(1 for r in results if r[2])))
+        return 1 if any(r[2] for r in results) else 0
     if a.undo:
         return 1 if undo(a.undo) else 0
     if not a.folder:

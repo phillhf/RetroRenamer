@@ -97,7 +97,7 @@ STRINGS = {
         "gui.rom_dir": "ROM-Ordner:",
         "gui.dat_dir": "DAT-Ordner:",
         "gui.browse": "Durchsuchen...",
-        "gui.get_dats": "DATs herunterladen",
+        "gui.get_dats": "No-Intro-DATs (Webseite)",
         "gui.opt_recursive": "Unterordner einbeziehen",
         "gui.opt_sort": "In Ordner pro System sortieren",
         "gui.opt_unknown": "Unbekannte nach {dir}",
@@ -146,6 +146,22 @@ STRINGS = {
         "gui.restart_title": "Update installiert",
         "gui.restart": "Das Update wurde installiert.\nRetroRenamer jetzt neu starten?",
         "gui.lang_restart": "Die Sprache wird nach einem Neustart vollständig übernommen.",
+        "gui.redump_dats": "Redump-DATs laden...",
+        # Redump-Download
+        "redump.title": "Redump-DATs herunterladen (CD/DVD-Systeme)",
+        "redump.intro": ("Wähle die Systeme aus, deren DAT-Dateien geladen werden sollen (Mehrfachauswahl per Klick).\n"
+                         "Die Dateien kommen direkt von redump.org in deinen DAT-Ordner. Ältere Versionen werden ersetzt.\n"
+                         "Um die Server zu schonen, wartet RetroRenamer zwischen zwei Downloads jeweils {s} Sekunden."),
+        "redump.loading_list": "Lade Systemliste von redump.org...",
+        "redump.fallback": "Die Systemliste konnte nicht von redump.org gelesen werden – es wird eine eingebaute Liste angezeigt.",
+        "redump.download": "Herunterladen",
+        "redump.cancel": "Abbrechen",
+        "redump.none_selected": "Bitte mindestens ein System auswählen.",
+        "redump.progress": "Lade Redump-DAT: {name}",
+        "redump.done": "{ok} DAT-Dateien geladen, davon {current} schon aktuell. {failed} Fehler.",
+        "redump.not_zip": "redump.org lieferte keine ZIP-Datei für '{code}'",
+        "redump.list_header": "Verfügbare Redump-Systeme (Kürzel – Name):",
+        "cli.redump": "Redump-DATs in den DAT-Ordner laden, z. B. psx,ps2 (Übersicht: --redump list)",
     },
     "en": {
         "status.OK": "OK",
@@ -229,7 +245,7 @@ STRINGS = {
         "gui.rom_dir": "ROM folder:",
         "gui.dat_dir": "DAT folder:",
         "gui.browse": "Browse...",
-        "gui.get_dats": "Download DATs",
+        "gui.get_dats": "No-Intro DATs (website)",
         "gui.opt_recursive": "Include subfolders",
         "gui.opt_sort": "Sort into one folder per system",
         "gui.opt_unknown": "Move unknown to {dir}",
@@ -278,6 +294,21 @@ STRINGS = {
         "gui.restart_title": "Update installed",
         "gui.restart": "The update has been installed.\nRestart RetroRenamer now?",
         "gui.lang_restart": "The language will be fully applied after a restart.",
+        "gui.redump_dats": "Get Redump DATs...",
+        "redump.title": "Download Redump DATs (CD/DVD systems)",
+        "redump.intro": ("Select the systems whose DAT files should be downloaded (click to select several).\n"
+                         "The files are downloaded directly from redump.org into your DAT folder. Older versions are replaced.\n"
+                         "To go easy on the servers, RetroRenamer waits {s} seconds between two downloads."),
+        "redump.loading_list": "Loading system list from redump.org...",
+        "redump.fallback": "The system list could not be read from redump.org – showing a built-in list instead.",
+        "redump.download": "Download",
+        "redump.cancel": "Cancel",
+        "redump.none_selected": "Please select at least one system.",
+        "redump.progress": "Downloading Redump DAT: {name}",
+        "redump.done": "{ok} DAT files downloaded, {current} of them already up to date. {failed} errors.",
+        "redump.not_zip": "redump.org did not return a ZIP file for '{code}'",
+        "redump.list_header": "Available Redump systems (code – name):",
+        "cli.redump": "Download Redump DATs into the DAT folder, e.g. psx,ps2 (overview: --redump list)",
     },
 }
 
