@@ -216,15 +216,16 @@ finally:
     rn.BIG_FILE = old_big
 
 # ---------------------------------------------------------------- Englisch
+utf8_env = dict(os.environ, PYTHONIOENCODING="utf-8")  # Windows nutzt bei Umleitung sonst cp1252
 i18n.set_language("en")
 assert rn.status_text(rn.ST_RENAME) == "RENAME" and rn.dup_dirname() == "_Duplicates"
 r = subprocess.run([sys.executable, os.path.join(PROJECT, "retrorenamer.py"), roms, "--dats", dats, "--lang", "en"],
-                   capture_output=True, text=True, encoding="utf-8")
+                   capture_output=True, text=True, encoding="utf-8", env=utf8_env)
 assert r.returncode == 0, r.stderr
 assert "Summary:" in r.stdout and "DUPLICATE" in r.stdout, r.stdout[-500:]
 i18n.set_language("de")
 r = subprocess.run([sys.executable, os.path.join(PROJECT, "retrorenamer.py"), roms, "--dats", dats, "--lang", "de"],
-                   capture_output=True, text=True, encoding="utf-8")
+                   capture_output=True, text=True, encoding="utf-8", env=utf8_env)
 assert r.returncode == 0 and "Zusammenfassung:" in r.stdout, r.stderr
 
 # ---------------------------------------------------------------- Updater

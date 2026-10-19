@@ -1,12 +1,16 @@
 # RetroRenamer
 
+[![Tests](https://github.com/phillhf/RetroRenamer/actions/workflows/tests.yml/badge.svg)](https://github.com/phillhf/RetroRenamer/actions/workflows/tests.yml)
+[![Latest release](https://img.shields.io/github/v/release/phillhf/RetroRenamer)](https://github.com/phillhf/RetroRenamer/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 **Identify retro game ROMs by their content, not their file name, and rename them to their correct, official names.**
 
 `pkmn_red_FINAL(2).gb` → `Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb`
 
 [🇩🇪 Deutsche Anleitung](README_de.md)
 
-![RetroRenamer screenshot](docs/screenshot.png)
+![RetroRenamer screenshot](docs/screenshot_en.png)
 
 ---
 
@@ -21,50 +25,74 @@ RetroRenamer calculates the checksum of each of your files and looks it up in th
 perfect name.
 
 > **RetroRenamer does not include any DAT files and no ROMs.** You download the DAT files yourself, for free.
-> See [step 1](#1-download-the-dat-files).
+> See [step 2](#2-download-the-dat-files).
 
 ## Features
 
 - **Many systems in one run**: Game Boy, Game Boy Color, GBA, NES, SNES, N64, Nintendo DS, Mega Drive/Genesis,
-  Master System, Game Gear and every other system with a No-Intro or Redump DAT
+  Master System, Game Gear, PlayStation and every other system with a No-Intro or Redump DAT
 - **Scans subfolders**: point it at your whole `ROMs` folder
 - **Handles headers and odd formats automatically**:
   - NES (iNES) and FDS headers, SNES copier headers, Atari Lynx and 7800 headers
   - Mega Drive `.smd` (interleaved) files
   - N64 `.v64` (byte-swapped) and `.n64` (little-endian) files
-- **ZIP support**: renames the archive *and* the file inside it
-- **7z support**: needs [7-Zip](https://www.7-zip.org/) to be installed and only works for archives with a single file
-- **Preview first**: nothing is changed until you click *Apply*
+- **CD images with several tracks** (`.cue` + `.bin`): all tracks are identified together and renamed together, and
+  the `.cue` file is updated to the new track names
+- **Archives**:
+  - `.zip`: renames the archive *and* the files inside it
+  - `.7z` and `.rar`: need [7-Zip](https://www.7-zip.org/) to be installed. The archive is renamed, but the files inside are not.
+  - Large files inside archives are read piece by piece, so even multi-GB disc images in a ZIP use little memory
+- **Fast**: checks several files in parallel
+- **Preview first**: nothing is changed until you click *Apply changes*
 - **Full undo**: every change is logged, and one click restores the original names
-- **Finds duplicates and unknown files**, and can move them into `_Duplikate` / `_Unbekannt`
+- **Finds duplicates and unknown files**, and can move them into `_Duplicates` / `_Unknown`
 - **Optional sorting** into one folder per system
 - For unknown ROMs it shows the **internal title from the ROM header** as a hint
-- **Built-in updater**: updates itself directly from GitHub with one click
-- Graphical user interface and command line
-- No dependencies besides Python itself
-
-> ℹ️ The user interface is currently in **German**. The screenshot and the [status table](#status-meanings) explain
-> every label.
+- **English and German**: the language is detected automatically and can be switched in the program
+- **Built-in updater**: updates itself directly from GitHub
+- Available as a **Windows EXE** (no installation needed) or as a Python script (Windows, Linux, macOS)
 
 ---
 
-## Installation
+## 1. Installation
 
-1. Install **Python 3.8 or newer** from [python.org](https://www.python.org/downloads/).
+### Option A: Windows EXE (easiest)
+
+1. Open the **[latest release](https://github.com/phillhf/RetroRenamer/releases/latest)** and download **`RetroRenamer.exe`**.
+2. Create a folder for it, e.g. `C:\Tools\RetroRenamer`, and put the EXE there. RetroRenamer stores its `dats` folder
+   and settings next to the EXE.
+3. Double-click `RetroRenamer.exe`.
+
+> ⚠️ **Windows SmartScreen** may warn you the first time ("Windows protected your PC"), because the EXE is not
+> digitally signed. Click **More info → Run anyway**. The EXE is built automatically by GitHub from the source code
+> in this repository ([build workflow](.github/workflows/release.yml)).
+
+### Option B: Python (Windows, Linux, macOS)
+
+1. Install **Python 3.9 or newer** from [python.org](https://www.python.org/downloads/).
    On Windows, tick **"Add python.exe to PATH"** in the installer.
-2. Download the latest version from the **[Releases page](https://github.com/phillhf/RetroRenamer/releases/latest)**
-   (*Source code (zip)*) and unzip it, or run:
+2. Download the **[latest release](https://github.com/phillhf/RetroRenamer/releases/latest)** (*Source code (zip)*)
+   and unzip it, or run:
    ```bash
    git clone https://github.com/phillhf/RetroRenamer.git
    ```
-3. *(Optional)* Install [7-Zip](https://www.7-zip.org/) if you want `.7z` archives to be recognized.
+3. Start it:
+   - **Windows:** double-click **`RetroRenamer starten.bat`**
+   - **Linux / macOS:** `python3 retrorenamer_gui.py`
+
+### Optional: 7-Zip
+
+Install [7-Zip](https://www.7-zip.org/) if you want `.7z` and `.rar` archives to be recognized.
+On Linux, install the `p7zip-full` or `7zip` package. On macOS, run `brew install sevenzip`.
 
 ---
 
-## 1. Download the DAT files
+## 2. Download the DAT files
 
 This is the most important step. **Without DAT files, RetroRenamer cannot recognize anything.**
 You only need to do it once. Repeat it from time to time to get newly added games.
+
+> 💡 The **Download DATs** button in RetroRenamer opens the download page and your DAT folder.
 
 ### Cartridge and handheld systems: No-Intro (recommended)
 
@@ -110,8 +138,12 @@ If you use the complete daily pack, you already have all of them. The names belo
 For CD/DVD systems (PlayStation, PS2, PSP, Saturn, Dreamcast, Mega-CD, GameCube, ...) download the DAT from
 **http://redump.org/downloads/**. Click **Datfile** next to the system and put the file into the `dats` folder.
 
-> ⚠️ RetroRenamer only identifies disc images that consist of **one single file** (e.g. a PS2/PSP `.iso` or a
-> single-track `.bin`). Multi-track games (`.cue` + several `.bin` files) are not supported yet.
+Supported disc formats:
+- `.cue` + one or more `.bin` tracks (e.g. PlayStation, Saturn, Mega-CD)
+- single-file images such as `.iso` (e.g. PS2, PSP, GameCube)
+
+> ⚠️ Compressed disc formats (`.chd`, `.rvz`, `.cso`, `.pbp`) and `.gdi` are **not** supported. Redump checksums refer
+> to the uncompressed data, so these files would first have to be converted back.
 
 ### Keeping the DATs up to date
 
@@ -120,30 +152,23 @@ automatically and rebuilds its internal cache on the next scan.
 
 ---
 
-## 2. Usage
+## 3. Usage
 
-### Graphical interface
-
-- **Windows:** double-click **`RetroRenamer starten.bat`**
-- **Linux / macOS:** run `python3 retrorenamer_gui.py`
-
-Then:
-
-1. **ROM-Ordner** (ROM folder): choose the folder with your ROMs, e.g. `C:\ROMs`. Subfolders are included.
-2. **DAT-Ordner** (DAT folder): the `dats` folder is preselected.
-3. Click **1. Scannen (Vorschau)** (*scan / preview*). Nothing is changed yet. The list shows the current and the new name of every file.
-4. Check the list, then click **2. Änderungen anwenden** (*apply changes*).
-5. Changed your mind? Click **Rückgängig machen...** (*undo*) and select the `retrorenamer_undo_<date>.csv` file in your ROM folder.
+1. **ROM folder**: choose the folder with your ROMs, e.g. `C:\ROMs`. Subfolders are included.
+2. **DAT folder**: the `dats` folder is preselected.
+3. Click **1. Scan (preview)**. Nothing is changed yet. The list shows the current and the new name of every file.
+4. Check the list, then click **2. Apply changes**.
+5. Changed your mind? Click **Undo...** and select the `retrorenamer_undo_<date>.csv` file in your ROM folder.
 
 **Options:**
 
 | Checkbox | Meaning |
 |---|---|
-| Unterordner einbeziehen | Include subfolders (default: on) |
-| In Ordner pro System sortieren | Move files into one folder per system, e.g. `Nintendo - Game Boy\` (default: off, so files stay where they are) |
-| Unbekannte nach _Unbekannt | Move unrecognized files into `_Unbekannt` |
-| Duplikate nach _Duplikate | Move duplicates into `_Duplikate` |
-| Dateien in ZIPs umbenennen | Also rename the file inside ZIP archives (default: on) |
+| Include subfolders | Scan subfolders too (default: on) |
+| Sort into one folder per system | Move files into one folder per system, e.g. `Nintendo - Game Boy\` (default: off, so files stay where they are) |
+| Move unknown to _Unknown | Move unrecognized files into `_Unknown` |
+| Move duplicates to _Duplicates | Move duplicates into `_Duplicates` |
+| Rename files inside ZIPs | Also rename the files inside ZIP archives (default: on) |
 
 ### Command line
 
@@ -151,7 +176,7 @@ Then:
 python retrorenamer.py "D:\ROMs"                     # preview only, changes nothing
 python retrorenamer.py "D:\ROMs" --apply             # rename
 python retrorenamer.py "D:\ROMs" --apply --sort      # rename and sort into one folder per system
-python retrorenamer.py --undo "D:\ROMs\retrorenamer_undo_20261018_120000.csv"
+python retrorenamer.py --undo "D:\ROMs\retrorenamer_undo_20261019_120000.csv"
 ```
 
 | Option | Meaning |
@@ -160,25 +185,26 @@ python retrorenamer.py --undo "D:\ROMs\retrorenamer_undo_20261018_120000.csv"
 | `--apply` | Actually perform the changes (otherwise preview only) |
 | `--no-recursive` | Do not scan subfolders |
 | `--sort` | Sort into one folder per system |
-| `--move-unknown` | Move unknown files to `_Unbekannt` |
-| `--move-duplicates` | Move duplicates to `_Duplikate` |
+| `--move-unknown` | Move unknown files to `_Unknown` |
+| `--move-duplicates` | Move duplicates to `_Duplicates` |
 | `--no-zip-inner` | Do not rename files inside ZIP archives |
 | `--report FILE.csv` | Save a CSV report with all checksums |
+| `--workers N` | Number of files checked in parallel (default: automatic) |
+| `--lang de\|en` | Output language (default: system language) |
 | `--undo UNDO.csv` | Undo a previous run |
+| `--update` | Install the latest version from GitHub |
 
 ---
 
 ## Updating
 
 RetroRenamer checks for a new version on GitHub every time it starts. If one is available, it asks you whether to
-install it. You can also check manually with the **Nach Updates suchen** (*check for updates*) button, or run:
+install it. You can also click **Check for updates**, or run `python retrorenamer.py --update`.
 
-```bash
-python retrorenamer.py --update
-```
+- **EXE version:** the new `RetroRenamer.exe` is downloaded and replaces the old one.
+- **Python version:** the program files are replaced.
 
-Only the program files are replaced. **Your DAT files and settings are kept.**
-If you installed RetroRenamer with `git clone`, update with `git pull` instead.
+**Your DAT files and settings are always kept.** If you installed RetroRenamer with `git clone`, update with `git pull` instead.
 
 ---
 
@@ -187,17 +213,17 @@ If you installed RetroRenamer with `git clone`, update with `git pull` instead.
 | Status | Meaning |
 |---|---|
 | **OK** | The file already has the correct name |
-| **UMBENENNEN** | Recognized, will be renamed |
-| **UNBEKANNT** | Unknown: the checksum is not in any DAT (see [FAQ](#faq)) |
-| **DUPLIKAT** | Duplicate: the same game already exists under its correct name |
-| **GEMISCHT** | Mixed: the archive contains several different games and is left untouched |
-| **FEHLER** | Error: the file could not be read |
+| **RENAME** | Recognized, will be renamed |
+| **UNKNOWN** | The checksum is not in any DAT (see [FAQ](#faq)) |
+| **DUPLICATE** | The same game already exists under its correct name |
+| **MIXED** | The archive or CUE contains files from several different games and is left untouched |
+| **ERROR** | The file could not be read, or files referenced by a `.cue` are missing |
 
 ---
 
 ## FAQ
 
-**A ROM shows up as "UNBEKANNT" (unknown). Why?**
+**A ROM shows up as UNKNOWN. Why?**
 - The DAT for that system is missing from the `dats` folder.
 - The ROM is a **hack, translation, homebrew or prototype**. These are not part of the No-Intro main DATs.
 - The ROM is a **bad dump** or has been **modified** (patched, trimmed, overdumped).
@@ -214,6 +240,10 @@ which version (region, revision) you have.
 Nothing happens before you confirm. Every change is written to an undo file immediately, so you can always go back.
 For the very first run on a large collection, we still recommend testing it on a copy.
 
+**How much memory does it need?**
+With the complete No-Intro daily pack, expect around 300 MB of RAM. Loading the DATs takes a few seconds the first
+time and is faster afterwards thanks to a cache.
+
 **Where do the names come from?**
 Directly from the DAT files. RetroRenamer uses exactly the names published by No-Intro / Redump.
 
@@ -221,18 +251,25 @@ Directly from the DAT files. RetroRenamer uses exactly the names published by No
 
 ## Limitations
 
-- Disc images with multiple tracks (`.cue` + several `.bin` files) are not supported.
-- `.7z` archives: only single-file archives, and only the archive itself is renamed (not the file inside).
-- `.rar` archives are not supported.
-- The user interface is in German.
+- Compressed disc formats (`.chd`, `.rvz`, `.cso`, `.pbp`) and `.gdi` are not supported.
+- `.7z` and `.rar` archives: only the archive itself is renamed, not the files inside.
 
-## Running the tests
+## Development
 
-The test suite creates artificial ROMs and DATs, so no real ROMs are needed:
+Run the tests. They create artificial ROMs and DATs, so no real ROMs are needed:
 
 ```bash
 python tests/test_retrorenamer.py
 ```
+
+Build the Windows EXE yourself:
+
+```bash
+pip install pyinstaller
+python -m PyInstaller --onefile --windowed --name RetroRenamer retrorenamer_gui.py
+```
+
+Every published release automatically gets a `RetroRenamer.exe` built by GitHub Actions.
 
 ## Legal
 
