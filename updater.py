@@ -1,4 +1,7 @@
-"""Update-Funktion: holt die neueste Release von GitHub und ersetzt die Programmdateien.
+"""Update-Funktion: holt die neueste Release von GitHub.
+
+- Python-Version: ersetzt die Programmdateien aus dem Quellcode-Paket der Release.
+- EXE-Version: laedt RetroRenamer.exe aus der Release und tauscht die laufende EXE aus.
 
 DAT-Dateien, Einstellungen und alles ausserhalb des Programmordners bleiben unberuehrt.
 """
@@ -8,13 +11,18 @@ import json
 import os
 import re
 import shutil
+import sys
 import tempfile
 import urllib.request
 import zipfile
 
+from i18n import tr
+
 REPO = "phillhf/RetroRenamer"
 API_LATEST = f"https://api.github.com/repos/{REPO}/releases/latest"
-APP_DIR = os.path.dirname(os.path.abspath(__file__))
+EXE_ASSET = "RetroRenamer.exe"
+FROZEN = getattr(sys, "frozen", False)
+APP_DIR = os.path.dirname(os.path.abspath(sys.executable if FROZEN else __file__))
 
 # Diese Pfade gehoeren dem Benutzer und werden bei einem Update nie ueberschrieben
 PROTECTED = ("dats/", "retrorenamer_settings.json", ".git/")
@@ -36,13 +44,24 @@ def _get(url, timeout=15):
 
 
 def check_latest(timeout=10):
-    """Gibt (version, zip_url, beschreibung, html_url) der neuesten Release zurueck."""
+    """Infos zur neuesten Release: version, zip_url, exe_url (oder None), notes, page."""
     data = json.loads(_get(API_LATEST, timeout))
-    return data["tag_name"].lstrip("vV"), data["zipball_url"], data.get("body") or "", data.get("html_url", "")
+    exe_url = next((a["browser_download_url"] for a in data.get("assets", []) if a.get("name") == EXE_ASSET), None)
+    return {"version": data["tag_name"].lstrip("vV"), "zip_url": data["zipball_url"], "exe_url": exe_url,
+            "notes": data.get("body") or "", "page": data.get("html_url", "")}
 
 
 def is_git_checkout():
-    return os.path.isdir(os.path.join(APP_DIR, ".git"))
+    return not FROZEN and os.path.isdir(os.path.join(APP_DIR, ".git"))
+
+
+def update_possible(info):
+    """None wenn installierbar, sonst ein Hinweistext, warum nicht."""
+    if is_git_checkout():
+        return tr("upd.git", v=info["version"])
+    if FROZEN and not info["exe_url"]:
+        return tr("upd.no_asset", v=info["version"])
+    return None
 
 
 def install_from_zip(zip_bytes, target_dir=APP_DIR):
@@ -52,7 +71,7 @@ def install_from_zip(zip_bytes, target_dir=APP_DIR):
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as z:
         names = [n for n in z.namelist() if not n.endswith("/")]
         if not names or "retrorenamer.py" not in {n.split("/", 1)[-1] for n in names}:
-            raise RuntimeError("Das heruntergeladene Paket ist kein gueltiges RetroRenamer-Update.")
+            raise RuntimeError(tr("upd.invalid"))
         with tempfile.TemporaryDirectory(prefix="retrorenamer_update_") as tmp:
             z.extractall(tmp)
             root = os.path.join(tmp, os.listdir(tmp)[0])
@@ -70,18 +89,62 @@ def install_from_zip(zip_bytes, target_dir=APP_DIR):
     return updated
 
 
+def replace_executable(new_exe, exe_path):
+    """Tauscht eine (evtl. gerade laufende) EXE aus. Windows erlaubt das Umbenennen einer
+    laufenden EXE, aber nicht das Ueberschreiben - daher: alt -> .old, neu -> Originalname."""
+    if len(new_exe) < 100_000 or new_exe[:2] != b"MZ":
+        raise RuntimeError(tr("upd.invalid"))
+    new_path, old_path = exe_path + ".new", exe_path + ".old"
+    with open(new_path, "wb") as f:
+        f.write(new_exe)
+    if os.path.exists(old_path):
+        try:
+            os.remove(old_path)
+        except OSError:
+            old_path = f"{exe_path}.{os.getpid()}.old"
+    os.rename(exe_path, old_path)
+    try:
+        os.rename(new_path, exe_path)
+    except Exception:
+        os.rename(old_path, exe_path)  # Ausgangszustand wiederherstellen
+        raise
+    return [os.path.basename(exe_path)]
+
+
+def cleanup_old_executables(exe_path=None):
+    """Raeumt nach einem EXE-Update die alte Version weg (beim naechsten Start aufgerufen)."""
+    exe_path = exe_path or (sys.executable if FROZEN else None)
+    if not exe_path:
+        return
+    folder, base = os.path.split(exe_path)
+    for name in os.listdir(folder):
+        if name.startswith(base + ".") and name.endswith(".old"):
+            try:
+                os.remove(os.path.join(folder, name))
+            except OSError:
+                pass
+
+
+def install(info):
+    """Installiert die Release aus check_latest(). Gibt die Liste der ersetzten Dateien zurueck."""
+    if FROZEN:
+        return replace_executable(_get(info["exe_url"], timeout=120), sys.executable)
+    return install_from_zip(_get(info["zip_url"], timeout=60))
+
+
 def update(local_version, log=print):
     """Komplettes Update fuer die Kommandozeile. Gibt True zurueck, wenn aktualisiert wurde."""
-    version, zip_url, notes, _ = check_latest()
-    if not is_newer(version, local_version):
-        log(f"RetroRenamer ist aktuell (Version {local_version}).")
+    info = check_latest()
+    if not is_newer(info["version"], local_version):
+        log(tr("upd.current", v=local_version))
         return False
-    if is_git_checkout():
-        log(f"Version {version} ist verfuegbar. Dieser Ordner ist ein Git-Klon - bitte 'git pull' verwenden.")
+    reason = update_possible(info)
+    if reason:
+        log(reason)
         return False
-    log(f"Lade Version {version} herunter ...")
-    files = install_from_zip(_get(zip_url, timeout=60))
-    log(f"Aktualisiert auf Version {version} ({len(files)} Dateien). Bitte RetroRenamer neu starten.")
-    if notes:
-        log("\nNeu in dieser Version:\n" + notes)
+    log(tr("upd.downloading", v=info["version"]))
+    files = install(info)
+    log(tr("upd.done", v=info["version"], n=len(files)))
+    if info["notes"]:
+        log("\n" + tr("upd.notes") + "\n" + info["notes"])
     return True

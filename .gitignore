@@ -34,3 +34,11 @@ roms/
 retrorenamer_undo_*.csv
 romnamer_undo_*.csv
 retrorenamer_bericht*.csv
+
+# EXE build output
+build/
+dist/
+*.spec
+*.exe
+*.exe.old
+retrorenamer_report*.csv
