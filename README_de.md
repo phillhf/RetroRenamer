@@ -1,3 +1,5 @@
+<img src="installer/app_256.png" alt="" width="96" align="right">
+
 # RetroRenamer
 
 [![Tests](https://github.com/phillhf/RetroRenamer/actions/workflows/tests.yml/badge.svg)](https://github.com/phillhf/RetroRenamer/actions/workflows/tests.yml)
@@ -50,24 +52,38 @@ mit perfektem Namen.
 - Bei unbekannten ROMs wird der **interne Titel aus dem ROM-Header** als Hinweis angezeigt.
 - **Deutsch und Englisch**: Die Sprache wird automatisch erkannt und lässt sich im Programm umschalten.
 - **Eingebaute Update-Funktion**: aktualisiert sich direkt von GitHub
-- Als **Windows-EXE** (ohne Installation) oder als Python-Skript (Windows, Linux, macOS)
+- Als **Windows-Installer**, als **portable Windows-EXE** oder als Python-Skript (Windows, Linux, macOS)
 
 ---
 
 ## 1. Installation
 
-### Variante A: Windows-EXE (am einfachsten)
+### Variante A: Windows-Installer (empfohlen)
 
-1. Die **[neueste Version](https://github.com/phillhf/RetroRenamer/releases/latest)** öffnen und **`RetroRenamer.exe`** herunterladen.
-2. Einen eigenen Ordner dafür anlegen, z. B. `C:\Tools\RetroRenamer`, und die EXE hineinlegen. RetroRenamer legt den
-   Ordner `dats` und seine Einstellungen neben der EXE ab.
+1. Die **[neueste Version](https://github.com/phillhf/RetroRenamer/releases/latest)** öffnen und
+   **`RetroRenamer-Setup-<Version>.exe`** herunterladen.
+2. Ausführen und den Schritten folgen. **Administratorrechte sind nicht nötig.** Standardordner ist
+   `C:\Tools\RetroRenamer`. Es gibt einen Startmenü-Eintrag und auf Wunsch eine Desktop-Verknüpfung.
+3. RetroRenamer über das Startmenü starten.
+
+Updates werden automatisch über den Installer eingespielt (RetroRenamer fragt vorher). Deinstallieren geht über
+*Einstellungen → Apps* oder den Startmenü-Eintrag *RetroRenamer deinstallieren*. Dabei wirst du gefragt, ob deine
+DAT-Dateien und Einstellungen erhalten bleiben sollen.
+
+Stille Installation: `RetroRenamer-Setup-<Version>.exe /VERYSILENT [/DIR="D:\RetroRenamer"] [/TASKS="desktopicon"]`
+
+### Variante B: Portable Windows-EXE
+
+1. **`RetroRenamer.exe`** von der **[neuesten Version](https://github.com/phillhf/RetroRenamer/releases/latest)** herunterladen.
+2. Einen eigenen Ordner dafür anlegen, z. B. `D:\Tools\RetroRenamer`, und die EXE hineinlegen. RetroRenamer legt den
+   Ordner `dats` und seine Einstellungen neben der EXE ab und läuft deshalb auch vom USB-Stick.
 3. Doppelklick auf `RetroRenamer.exe`.
 
-> ⚠️ **Windows SmartScreen** warnt eventuell beim ersten Start („Der Computer wurde durch Windows geschützt“), weil die
-> EXE nicht digital signiert ist. Dann auf **Weitere Informationen → Trotzdem ausführen** klicken. Die EXE wird
-> automatisch von GitHub aus dem Quellcode dieses Repositorys gebaut ([Build-Workflow](.github/workflows/release.yml)).
+> ⚠️ **Windows SmartScreen** warnt eventuell beim ersten Start („Der Computer wurde durch Windows geschützt“), weil
+> Installer und EXE nicht digital signiert sind. Dann auf **Weitere Informationen → Trotzdem ausführen** klicken. Beide
+> werden automatisch von GitHub aus dem Quellcode dieses Repositorys gebaut ([Build-Workflow](.github/workflows/release.yml)).
 
-### Variante B: Python (Windows, Linux, macOS)
+### Variante C: Python (Windows, Linux, macOS)
 
 1. **Python 3.9 oder neuer** von [python.org](https://www.python.org/downloads/) installieren.
    Unter Windows im Installer **„Add python.exe to PATH“** anhaken.
@@ -215,7 +231,8 @@ python retrorenamer.py --undo "D:\ROMs\retrorenamer_undo_20261019_120000.csv"
 RetroRenamer prüft bei jedem Start, ob es auf GitHub eine neue Version gibt. Wenn ja, fragt es, ob sie installiert
 werden soll. Manuell geht es über den Knopf **Nach Updates suchen** oder per `python retrorenamer.py --update`.
 
-- **EXE-Version:** Die neue `RetroRenamer.exe` wird heruntergeladen und ersetzt die alte.
+- **Installer-Version:** Der neue Installer wird heruntergeladen und läuft still im Hintergrund. RetroRenamer wird dabei beendet und danach automatisch neu gestartet.
+- **Portable EXE:** Die neue `RetroRenamer.exe` wird heruntergeladen und ersetzt die alte.
 - **Python-Version:** Die Programmdateien werden ersetzt.
 
 **Deine DAT-Dateien und Einstellungen bleiben immer erhalten.** Wenn du RetroRenamer per `git clone` installiert
@@ -284,14 +301,15 @@ Tests ausführen. Sie erzeugen künstliche ROMs und DATs, echte ROMs sind also n
 python tests/test_retrorenamer.py
 ```
 
-Die Windows-EXE selbst bauen:
+Windows-EXE und Installer selbst bauen (braucht `pip install pyinstaller` und
+[Inno Setup 6](https://jrsoftware.org/isinfo.php)):
 
 ```bash
-pip install pyinstaller
-python -m PyInstaller --onefile --windowed --name RetroRenamer retrorenamer_gui.py
+powershell -ExecutionPolicy Bypass -File installer\build.ps1
 ```
 
-Jede veröffentlichte Release bekommt automatisch eine von GitHub Actions gebaute `RetroRenamer.exe`.
+Die Ergebnisse liegen in `dist\`. Jede veröffentlichte Release bekommt beide Dateien automatisch, gebaut von
+GitHub Actions. Das Programmsymbol erzeugt `python installer/make_icon.py`.
 
 ## Rechtliches
 

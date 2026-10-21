@@ -11,6 +11,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import urllib.request
@@ -21,6 +22,7 @@ from i18n import tr
 REPO = "phillhf/RetroRenamer"
 API_LATEST = f"https://api.github.com/repos/{REPO}/releases/latest"
 EXE_ASSET = "RetroRenamer.exe"
+SETUP_PREFIX = "RetroRenamer-Setup-"
 FROZEN = getattr(sys, "frozen", False)
 APP_DIR = os.path.dirname(os.path.abspath(sys.executable if FROZEN else __file__))
 
@@ -43,23 +45,47 @@ def _get(url, timeout=15):
         return r.read()
 
 
-def check_latest(timeout=10):
-    """Infos zur neuesten Release: version, zip_url, exe_url (oder None), notes, page."""
-    data = json.loads(_get(API_LATEST, timeout))
-    exe_url = next((a["browser_download_url"] for a in data.get("assets", []) if a.get("name") == EXE_ASSET), None)
+def parse_release(data):
+    """Infos zur Release: version, zip_url, exe_url, setup_url (oder None), notes, page."""
+    assets = data.get("assets", [])
+    exe_url = next((a["browser_download_url"] for a in assets if a.get("name") == EXE_ASSET), None)
+    setup_url = next((a["browser_download_url"] for a in assets
+                      if a.get("name", "").startswith(SETUP_PREFIX) and a["name"].lower().endswith(".exe")), None)
     return {"version": data["tag_name"].lstrip("vV"), "zip_url": data["zipball_url"], "exe_url": exe_url,
-            "notes": data.get("body") or "", "page": data.get("html_url", "")}
+            "setup_url": setup_url, "notes": data.get("body") or "", "page": data.get("html_url", "")}
+
+
+def check_latest(timeout=10):
+    return parse_release(json.loads(_get(API_LATEST, timeout)))
 
 
 def is_git_checkout():
     return not FROZEN and os.path.isdir(os.path.join(APP_DIR, ".git"))
 
 
+def installed_by_setup(app_dir=APP_DIR):
+    """Wurde RetroRenamer ueber den Installer eingerichtet? (Inno Setup legt unins000.exe ab)"""
+    try:
+        return any(n.lower().startswith("unins") and n.lower().endswith(".exe") for n in os.listdir(app_dir))
+    except OSError:
+        return False
+
+
+def update_method(info, frozen=FROZEN, app_dir=APP_DIR):
+    """'setup', 'exe', 'zip' oder None (dann gibt es noch keine passende Datei in der Release)."""
+    if not frozen:
+        return "zip"
+    if installed_by_setup(app_dir):
+        # Installer bevorzugen (haelt Versionsnummer und Deinstallationseintrag aktuell)
+        return "setup" if info["setup_url"] else ("exe" if info["exe_url"] else None)
+    return "exe" if info["exe_url"] else None
+
+
 def update_possible(info):
     """None wenn installierbar, sonst ein Hinweistext, warum nicht."""
     if is_git_checkout():
         return tr("upd.git", v=info["version"])
-    if FROZEN and not info["exe_url"]:
+    if update_method(info) is None:
         return tr("upd.no_asset", v=info["version"])
     return None
 
@@ -125,9 +151,28 @@ def cleanup_old_executables(exe_path=None):
                 pass
 
 
+def run_setup(setup_bytes):
+    """Startet den heruntergeladenen Installer still. Er beendet RetroRenamer, aktualisiert es
+    und startet es danach wieder (/RESTARTAPP=1)."""
+    if len(setup_bytes) < 100_000 or setup_bytes[:2] != b"MZ":
+        raise RuntimeError(tr("upd.invalid"))
+    path = os.path.join(tempfile.gettempdir(), f"RetroRenamer-Setup-update-{os.getpid()}.exe")
+    with open(path, "wb") as f:
+        f.write(setup_bytes)
+    subprocess.Popen([path, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/RESTARTAPP=1"],
+                     close_fds=True, creationflags=getattr(subprocess, "DETACHED_PROCESS", 0))
+    return path
+
+
 def install(info):
-    """Installiert die Release aus check_latest(). Gibt die Liste der ersetzten Dateien zurueck."""
-    if FROZEN:
+    """Installiert die Release aus check_latest().
+    Gibt 'setup' zurueck, wenn ein Installer gestartet wurde (das Programm muss sich dann beenden),
+    sonst die Liste der ersetzten Dateien."""
+    method = update_method(info)
+    if method == "setup":
+        run_setup(_get(info["setup_url"], timeout=180))
+        return "setup"
+    if method == "exe":
         return replace_executable(_get(info["exe_url"], timeout=120), sys.executable)
     return install_from_zip(_get(info["zip_url"], timeout=60))
 

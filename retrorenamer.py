@@ -34,7 +34,7 @@ from dataclasses import dataclass, field
 
 from i18n import tr, all_translations, set_language
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 
 
 def _app_dir():

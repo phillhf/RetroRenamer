@@ -1,36 +1,57 @@
-name: Build Windows EXE
+name: Build Windows EXE and installer
 
-# Baut bei jeder veroeffentlichten Release die RetroRenamer.exe und haengt sie an die Release an.
-# Die eingebaute Update-Funktion der EXE-Version laedt genau diese Datei.
+# Baut bei jeder veroeffentlichten Release RetroRenamer.exe und RetroRenamer-Setup-<Version>.exe
+# und haengt beide an die Release an. Die eingebaute Update-Funktion laedt genau diese Dateien:
+# Installer-Installationen aktualisieren sich ueber das Setup, die lose EXE tauscht sich selbst aus.
 on:
   release:
     types: [published]
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to build for (e.g. v1.1.0)"
+        description: "Release tag to build for (e.g. v1.3.0)"
         required: true
 
 permissions:
   contents: write
 
 jobs:
-  build-exe:
+  build:
     runs-on: windows-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          ref: ${{ env.TAG }}
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - name: Run tests
+
+      - name: Tag und Version abgleichen
+        shell: pwsh
+        run: |
+          $v = (python -c "import retrorenamer; print(retrorenamer.VERSION)").Trim()
+          if ("v$v" -ne $env:TAG) { throw "Tag $env:TAG passt nicht zu VERSION $v in retrorenamer.py" }
+
+      - name: Tests
         run: python tests/test_retrorenamer.py
-      - name: Build EXE
+
+      - name: Werkzeuge bereitstellen
+        shell: pwsh
         run: |
           python -m pip install --disable-pip-version-check pyinstaller
-          python -m PyInstaller --noconfirm --onefile --windowed --name RetroRenamer retrorenamer_gui.py
-      - name: Upload EXE to release
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+
+      - name: EXE und Installer bauen
+        shell: pwsh
+        run: ./installer/build.ps1 -SkipTests
+
+      - name: An die Release anhaengen
+        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name || inputs.tag }}" dist/RetroRenamer.exe --clobber
+        run: |
+          $setup = Get-ChildItem dist\RetroRenamer-Setup-*.exe | Select-Object -First 1
+          gh release upload $env:TAG dist\RetroRenamer.exe $setup.FullName --clobber

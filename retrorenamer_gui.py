@@ -35,6 +35,7 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         updater.cleanup_old_executables()
+        self._set_icon()
         self.geometry("1250x720")
         self.minsize(950, 500)
         self.q = queue.Queue()
@@ -64,6 +65,17 @@ class App(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self._close)
         self.after(100, self._poll)
         self.after(1500, lambda: self.check_update(silent=True))
+
+    def _set_icon(self):
+        # EXE: Symbol liegt im entpackten PyInstaller-Ordner, Python-Version: im Ordner installer
+        for path in (os.path.join(getattr(sys, "_MEIPASS", ""), "app.ico"),
+                     os.path.join(rn.SCRIPT_DIR, "installer", "app.ico")):
+            if os.path.isfile(path):
+                try:
+                    self.iconbitmap(default=path)
+                except tk.TclError:
+                    pass  # z. B. unter Linux werden .ico-Dateien nicht unterstuetzt
+                return
 
     def report_callback_exception(self, exc, val, tb):
         # Ohne Konsole (pythonw / EXE) waeren Fehler sonst unsichtbar
@@ -245,6 +257,9 @@ class App(tk.Tk):
                     self._offer_update(val)
                 elif kind == "call":
                     val()
+                elif kind == "quit":
+                    self._close()
+                    return
                 elif kind == "restart":
                     self._restart()
                 elif kind == "info":
@@ -418,7 +433,10 @@ class App(tk.Tk):
 
         def job():
             self._log(tr("upd.downloading", v=info["version"]))
-            updater.install(info)
+            if updater.install(info) == "setup":
+                # Der Installer ersetzt das laufende Programm und startet es danach neu
+                self.q.put(("quit", None))
+                return
             self._log(tr("gui.update_installed", v=info["version"]))
             self.q.put(("restart", None))
         self._run(job)

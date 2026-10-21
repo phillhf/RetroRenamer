@@ -270,6 +270,27 @@ except RuntimeError:
     pass
 assert open(exe, "rb").read()[:5] == b"MZneu"
 
+# Release-Dateien und Update-Weg (Installer / EXE / Quellcode)
+rel = updater.parse_release({"tag_name": "v9.9.9", "zipball_url": "zip", "body": "", "assets": [
+    {"name": "RetroRenamer.exe", "browser_download_url": "exe"},
+    {"name": "RetroRenamer-Setup-9.9.9.exe", "browser_download_url": "setup"}]})
+assert (rel["version"], rel["exe_url"], rel["setup_url"]) == ("9.9.9", "exe", "setup"), rel
+setup_dir, plain_dir = os.path.join(base, "inst_setup"), os.path.join(base, "inst_plain")
+os.makedirs(setup_dir); os.makedirs(plain_dir)
+open(os.path.join(setup_dir, "unins000.exe"), "wb").write(b"MZ")
+assert updater.installed_by_setup(setup_dir) and not updater.installed_by_setup(plain_dir)
+assert updater.update_method(rel, frozen=True, app_dir=setup_dir) == "setup"
+assert updater.update_method(rel, frozen=True, app_dir=plain_dir) == "exe"
+assert updater.update_method(rel, frozen=False, app_dir=setup_dir) == "zip"
+no_setup = dict(rel, setup_url=None)
+assert updater.update_method(no_setup, frozen=True, app_dir=setup_dir) == "exe"   # Rueckfall auf die EXE
+assert updater.update_method(dict(rel, setup_url=None, exe_url=None), frozen=True, app_dir=plain_dir) is None
+try:
+    updater.run_setup(b"<html>kein Installer</html>")
+    raise AssertionError("Ungueltiger Installer wurde gestartet")
+except RuntimeError:
+    pass
+
 # ---------------------------------------------------------------- Redump-Download (ohne Internet, simuliert)
 import datfetch
 sample = ('<table><tr><td>Konami Twinkle</td><td></td><td></td></tr>'
